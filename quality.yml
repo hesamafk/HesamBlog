@@ -1,0 +1,45 @@
+name: Static site quality checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  validate-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Validate HTML and local links
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          root = Path('.')
+          pages = list(root.rglob('*.html'))
+          assert len(pages) >= 6, f'Expected at least 6 HTML pages, got {len(pages)}'
+          class Checker(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.links=[]; self.has_title=False; self.has_viewport=False; self.ids=set(); self.hrefs=[]
+              def handle_starttag(self, tag, attrs):
+                  a=dict(attrs)
+                  if tag == 'title': self.has_title=True
+                  if tag == 'meta' and a.get('name') == 'viewport': self.has_viewport=True
+                  if a.get('id'): self.ids.add(a['id'])
+                  if tag in ('a','link','script'):
+                      target = a.get('href') if tag in ('a','link') else a.get('src')
+                      if target: self.links.append(target)
+          errors=[]
+          for page in pages:
+              parser=Checker(); parser.feed(page.read_text(encoding='utf-8')); parser.close()
+              rel=page.relative_to(root)
+              if not parser.has_viewport: errors.append(f'{rel}: missing viewport meta')
+              for link in parser.links:
+                  if link.startswith(('http://','https://','mailto:','tel:','#','data:','javascript:')): continue
+                  target=(page.parent/link.split('#',1)[0].split('?',1)[0]).resolve()
+                  if not target.exists(): errors.append(f'{rel}: broken local reference {link}')
+          assert not errors, '\n'.join(errors)
+          print(f'Validated {len(pages)} HTML pages and their local references.')
+          PY
