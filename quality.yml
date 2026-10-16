@@ -43,3 +43,4 @@ jobs:
           assert not errors, '\n'.join(errors)
           print(f'Validated {len(pages)} HTML pages and their local references.')
           PY
+

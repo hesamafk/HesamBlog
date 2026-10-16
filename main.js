@@ -7,6 +7,9 @@
       menuButton.setAttribute('aria-expanded', String(!expanded));
       nav.classList.toggle('is-open', !expanded);
     });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { menuButton.setAttribute('aria-expanded', 'false'); nav.classList.remove('is-open'); }
+    });
     nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
       menuButton.setAttribute('aria-expanded', 'false');
       nav.classList.remove('is-open');
@@ -33,5 +36,7 @@
       if (noResults) noResults.hidden = visible !== 0;
     };
     search.addEventListener('input', filterPosts);
+    filterPosts();
   }
 })();
+
